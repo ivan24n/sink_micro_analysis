@@ -166,6 +166,6 @@ manuscript's methods.
 
 If you use these scripts, please cite:
 
-> [Author list]. Spatiotemporal dynamics of multi-kingdom microbial
+> [Iván Linares-Ambohades, Natalia Guerra-Pinto, Sandra Mingo-Ramirez, Silvia Serrano-Calleja, Francisco Amaro, Ana Alastruey-Izquierdo, María Cruz Soriano, Raúl de Pablo6, Val F. Lanza, Rafael Cantón, Fernando Baquero, Teresa M. Coque1, Ana Elena Pérez-Cobas]. Spatiotemporal dynamics of multi-kingdom microbial
 > communities in hospital sinks. [Journal, year, DOI — to be added upon
 > publication]
