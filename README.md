@@ -11,12 +11,12 @@ statistical analysis and figure generation (`R/`).
 
 ```
 .
-├── scripts/
+├── Bash_scripts/
 │   ├── 01_primer_trimming.sh          # Adapter/primer removal (16S, 18S, ITS) with Cutadapt
 │   ├── 02_quality_trimming.sh         # Quality/length trimming with Trimmomatic
 │   ├── 03_host_read_removal.sh        # Removal of human reads with Bowtie2
 │   └── 04_taxonomic_classification.sh # Taxonomic classification with Kraken2
-└── R/
+└── R_scrpts/
     ├── 01_import_kraken.R             # Parses Kraken2 reports into a combined table
     ├── 02_build_taxonomy_tables.R     # Genus-level abundance tables per marker
     ├── 03_rarefaction.R               # Rarefaction curves and rarefied OTU/ASV tables
