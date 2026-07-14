@@ -54,11 +54,15 @@ following folder layout under `work_dir` (created by the earlier steps):
 work_dir/
 ├── Control_sink/{16S,18S,ITS}/Analysis/Kraken/reports/   # Kraken2 reports
 └── {16S,18S,ITS}_SINKS/
-    ├── tables/     # Intermediate and final tables
-    ├── figures/    # Marker-level figures
-    ├── tables_area/  # Area-stratified tables (16S only, see note below)
-    └── figures_area/ # Area-stratified figures (16S only, see note below)
+    ├── tables/                # General (non-stratified) tables
+    │   ├── area/               # Area-grouped statistics (alpha/beta diversity)
+    │   └── period/             # Period-grouped statistics (alpha/beta diversity)
+    └── figures/                # General figures
+        ├── area/
+        └── period/
 ```
+
+This structure is applied consistently across all three markers.
 
 ## Usage
 
@@ -140,32 +144,68 @@ manuscript's methods.
 - All hard-coded personal file paths (e.g. `/home/ivan/...`) were replaced
   with a `work_dir` variable that must be set by whoever runs the scripts.
 - `05_microbial_analysis.R` and `03_rarefaction.R` were **not** restructured
-  into loops/functions, despite containing substantial repetition across
-  markers (16S/18S/ITS) and, in `05_microbial_analysis.R`, across areas
-  (A/B/C). The repeated blocks differ in enough small ways (thresholds,
-  regex patterns, column selections) that collapsing them safely needs a
-  careful, dedicated pass — happy to do this as a follow-up if wanted.
-
-### Open questions (pending confirmation, not yet changed)
-
-1. In `05_microbial_analysis.R`, within each area sub-analysis (A/B/C,
-   16S only), the Bray-Curtis pairwise PERMANOVA results are saved to
-   `tables_area/`, but the Jaccard results are saved to `tables/` instead
-   — this pattern repeats in all three sub-blocks and looks like a
-   copy-paste inconsistency rather than an intentional choice.
-2. The area-stratified (A/B/C) sub-analysis in `05_microbial_analysis.R`
-   is only present for the 16S dataset — there is no 18S/ITS equivalent
-   in this script. Confirm whether this is intentional.
-3. In `03_rarefaction.R`, the estimated-richness bar plot is built
-   differently for 16S/ITS (values taken by position, assuming row order
-   matches) versus 18S (values taken via an explicit join by `Sample`).
-   The join-based approach is safer; confirm whether to standardize all
-   three to it.
+  into loops/functions, despite containing repetition across markers
+  (16S/18S/ITS). The repeated blocks differ in enough small ways
+  (thresholds, regex patterns, column selections) that collapsing them
+  safely would need a careful, dedicated pass — happy to do this as a
+  follow-up if wanted.
+- The per-area (A/B/C) sub-analysis section that previously existed at the
+  end of `05_microbial_analysis.R` (16S only) has been removed at the
+  authors' request, as it was an extra analysis not needed for the
+  manuscript.
+- The "Period Analysis" section (16S only) has also been removed at the
+  authors' request: this was a further breakdown of each sampling period
+  ("Empty" and "Multifunctional") into area-level sample subgroups, and
+  was likewise deemed an extra analysis not needed for the manuscript.
+- Output tables and figures in `05_microbial_analysis.R` now follow one
+  consistent folder scheme per marker (`tables/area/`, `tables/period/`,
+  `figures/area/`, `figures/period/`), instead of the original's three
+  inconsistent naming conventions (`tables/..._area_16S.tsv`,
+  `tables_area/...`, `tables_unit/...`).
+- Fixed a copy-paste bug found in the original script while reorganizing
+  these paths: in the per-area Bray/Jaccard pairwise PERMANOVA saves,
+  Jaccard results were written to the general `tables/` folder instead of
+  the area-specific one.
+- Per the authors' request, the 18S dataset now only computes Jaccard
+  beta-diversity (no Bray-Curtis): the corresponding Bray-Curtis code,
+  plots, and PERMANOVA tables for 18S were removed, and the 18S composite
+  summary figures (`figures/area/plot_18S.svg`,
+  `figures/period/plot_18S.svg`) use a 6-panel layout instead of the
+  7-panel layout used for 16S/ITS (which still include both metrics).
+- `03_rarefaction.R`: the estimated-richness bar plot is now built the
+  same way for all three markers — joining explicitly by `Sample` rather
+  than assuming matching row order (as the original 18S block already
+  did; the 16S/ITS blocks were updated to match).
 
 ## Citation
 
 If you use these scripts, please cite:
 
-> [Iván Linares-Ambohades, Natalia Guerra-Pinto, Sandra Mingo-Ramirez, Silvia Serrano-Calleja, Francisco Amaro, Ana Alastruey-Izquierdo, María Cruz Soriano, Raúl de Pablo6, Val F. Lanza, Rafael Cantón, Fernando Baquero, Teresa M. Coque1, Ana Elena Pérez-Cobas]. Spatiotemporal dynamics of multi-kingdom microbial
-> communities in hospital sinks. [Journal, year, DOI — to be added upon
-> publication]
+> Linares-Ambohades I, Guerra-Pinto N, Mingo-Ramirez S, Serrano-Calleja S,
+> Amaro F, Alastruey-Izquierdo A, Soriano MC, de Pablo R, Lanza VF,
+> Cantón R, Baquero F, Coque TM, Pérez-Cobas AE. Spatiotemporal dynamics
+> of multi-kingdom microbial communities in hospital sinks.
+> [Journal, year, DOI — to be added upon publication]
+
+**Authors and affiliations**
+
+Iván Linares-Ambohades¹,², Natalia Guerra-Pinto¹,³, Sandra Mingo-Ramirez¹,
+Silvia Serrano-Calleja¹, Francisco Amaro⁴, Ana Alastruey-Izquierdo⁵,
+María Cruz Soriano⁶,⁷, Raúl de Pablo⁶,⁷, Val F. Lanza³,ˣ, Rafael Cantón¹,³,
+Fernando Baquero¹,ˣ, Teresa M. Coque¹,³*, Ana Elena Pérez-Cobas¹,³*
+
+1. Department of Microbiology, Ramón y Cajal Institute for Health Research (IRYCIS), Ramón y Cajal University Hospital, Madrid, Spain
+2. Escuela de Doctorado, Universidad Autónoma de Madrid, Madrid, Spain
+3. CIBER in Infectious Diseases (CIBERINFEC), Madrid, Spain
+4. University Complutense of Madrid (UCM), Madrid, Spain
+6. Intensive Medicine, Ramón y Cajal University Hospital and Ramón y Cajal Health Research Institute (IRYCIS), Madrid, Spain
+7. University of Alcalá (UAH), Madrid, Spain
+8. Translational Genomics (NGS) and Bioinformatics Unit, Ramón y Cajal Health Research Institute (IRYCIS), Madrid, Spain
+
+*Correspondence:*
+Teresa M. Coque — mariateresa.coque@salud.madrid.org, teresacoque@gmail.com
+Ana Elena Pérez-Cobas — anaelena.perez@salud.madrid.org
+
+*Department of Microbiology, Ramón y Cajal Institute for Health Research
+(IRYCIS), Ramón y Cajal University Hospital, Carretera de Colmenar, km.
+9.1, Madrid 28034, Spain.*
