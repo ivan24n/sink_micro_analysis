@@ -16,7 +16,7 @@ analysis and figure generation (`R/`).
 │   ├── 02_quality_trimming.sh         # Quality/length trimming with Trimmomatic
 │   ├── 03_host_read_removal.sh        # Removal of human reads with Bowtie2
 │   └── 04_taxonomic_classification.sh # Taxonomic classification with Kraken2
-├── db_build/
+├── Databases/
 │   ├── build_16S_database.sh          # Kraken2 DB for 16S (pre-built RDP index)
 │   ├── build_18S_database.sh          # Kraken2 DB for 18S (EukRibo + SILVA + PR2 + protozoa)
 │   └── build_ITS_database.sh          # Kraken2 DB for ITS (UNITE + NCBI fungi)
