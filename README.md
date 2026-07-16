@@ -4,19 +4,23 @@ This repository contains the analysis scripts used in the study
 **"Spatiotemporal dynamics of multi-kingdom microbial communities in hospital sinks."**
 
 It includes the bash-based amplicon and shotgun metagenomics preprocessing
-pipeline (`scripts/`) and, once added, the R scripts used for downstream
-statistical analysis and figure generation (`R/`).
+pipeline (`scripts/`) and the R scripts used for downstream statistical
+analysis and figure generation (`R/`).
 
 ## Repository structure
 
 ```
 .
-├── Bash_scripts/
+├── scripts/
 │   ├── 01_primer_trimming.sh          # Adapter/primer removal (16S, 18S, ITS) with Cutadapt
 │   ├── 02_quality_trimming.sh         # Quality/length trimming with Trimmomatic
 │   ├── 03_host_read_removal.sh        # Removal of human reads with Bowtie2
 │   └── 04_taxonomic_classification.sh # Taxonomic classification with Kraken2
-└── R_scrpts/
+├── db_build/
+│   ├── build_16S_database.sh          # Kraken2 DB for 16S (pre-built RDP index)
+│   ├── build_18S_database.sh          # Kraken2 DB for 18S (EukRibo + SILVA + PR2 + protozoa)
+│   └── build_ITS_database.sh          # Kraken2 DB for ITS (UNITE + NCBI fungi)
+└── R/
     ├── 01_import_kraken.R             # Parses Kraken2 reports into a combined table
     ├── 02_build_taxonomy_tables.R     # Genus-level abundance tables per marker
     ├── 03_rarefaction.R               # Rarefaction curves and rarefied OTU/ASV tables
@@ -27,7 +31,10 @@ statistical analysis and figure generation (`R/`).
 The numbering above reflects a suggested processing order; adjust it if your
 pipeline runs the steps in a different sequence (e.g., quality trimming
 before primer removal, or host read removal before/after taxonomic
-classification, depending on the dataset — amplicon vs. shotgun).
+classification, depending on the dataset — amplicon vs. shotgun). The
+scripts in `db_build/` are a one-time setup step: build each Kraken2
+database once, then reuse it across runs of
+`scripts/04_taxonomic_classification.sh`.
 
 ## Requirements
 
@@ -37,6 +44,7 @@ classification, depending on the dataset — amplicon vs. shotgun).
 | [Trimmomatic](http://www.usadellab.org/cms/?page=trimmomatic) + Java | `02_quality_trimming.sh` |
 | [Bowtie2](https://bowtie-bio.sourceforge.net/bowtie2/) | `03_host_read_removal.sh` |
 | [Kraken2](https://ccb.jhu.edu/software/kraken2/) (+ [GNU parallel](https://www.gnu.org/software/parallel/), optional) | `04_taxonomic_classification.sh` |
+| `kraken2-build`, `wget`, `tar` | `db_build/*.sh` |
 
 All bash scripts expect paired-end FASTQ files named with the Illumina-style
 convention `<sample>_R1_001.fastq.gz` / `<sample>_R2_001.fastq.gz`.
@@ -65,6 +73,22 @@ work_dir/
 This structure is applied consistently across all three markers.
 
 ## Usage
+
+### 0. Build the Kraken2 databases (one-time setup)
+
+```bash
+cd db_build/
+./build_16S_database.sh   # -> kraken2_db_16S/
+./build_18S_database.sh   # -> kraken2_db_18S/
+./build_ITS_database.sh   # -> kraken2_db_ITS/  (requires manually downloading
+                          #    the UNITE archive first, see script header)
+```
+
+Each script downloads/builds its database in the current working
+directory, under a folder named `kraken2_db_{16S,18S,ITS}` — these
+folder names/paths are what you then pass to the `-d` flag of
+`scripts/04_taxonomic_classification.sh`. This only needs to be run once;
+the resulting database folders can be reused across all sequencing runs.
 
 ### 1. Primer trimming (amplicon data: 16S / 18S / ITS)
 
@@ -102,11 +126,17 @@ that do not align (non-host reads).
 ### 4. Taxonomic classification
 
 ```bash
-./scripts/04_taxonomic_classification.sh -i host_filtered/ -o kraken2_out/ -d /path/to/kraken2_db -t 4 -p 1
+./scripts/04_taxonomic_classification.sh -i host_filtered/16S/ -o kraken2_out/16S/ -d /path/to/kraken2_db_16S -t 4 -p 1
+./scripts/04_taxonomic_classification.sh -i host_filtered/18S/ -o kraken2_out/18S/ -d /path/to/kraken2_db_18S -t 4 -p 1 -c 0.1
 ```
 
 Runs Kraken2 per sample, writing classification output and reports;
 `-p` enables parallel processing of samples (requires GNU parallel).
+`-c` sets Kraken2's `--confidence` threshold (0-1); for 18S rRNA
+classification, a higher value than the default is recommended, since
+eukaryotic reads are more prone to spurious low-confidence hits across
+kingdoms. The example above uses `0.1` as a placeholder — replace it with
+the value used in the manuscript's methods.
 
 ### 5. Downstream analysis (R)
 
@@ -141,6 +171,14 @@ manuscript's methods.
 - `04_build_taxa_tables.R` consolidates three original per-marker blocks
   (identical logic, different file paths) into a loop; the function and
   its outputs are unchanged.
+- `db_build/*.sh` were adapted the same way (English, generic/documented,
+  no logic changes) with two safe additions: a check that the UNITE
+  archive exists before `build_ITS_database.sh` proceeds (with download
+  instructions, since UNITE has no stable direct-download URL), and an
+  unused leftover variable removed from `build_18S_database.sh`. All
+  three now build into consistently named folders
+  (`kraken2_db_16S/18S/ITS`) matching the `-d` flag used in
+  `04_taxonomic_classification.sh`.
 - All hard-coded personal file paths (e.g. `/home/ivan/...`) were replaced
   with a `work_dir` variable that must be set by whoever runs the scripts.
 - `05_microbial_analysis.R` and `03_rarefaction.R` were **not** restructured
