@@ -3,9 +3,8 @@
 This repository contains the analysis scripts used in the study
 **"Spatiotemporal dynamics of multi-kingdom microbial communities in hospital sinks."**
 
-It includes the bash-based amplicon and shotgun metagenomics preprocessing
-pipeline (`scripts/`) and the R scripts used for downstream statistical
-analysis and figure generation (`R/`).
+It includes the bash-based preprocessing pipeline for 16S, ITS, and 18S amplicon metagenomics (`scripts/`)
+and the R scripts used for downstream statistical analysis and figure generation (`R/`).
 
 ## Repository structure
 
