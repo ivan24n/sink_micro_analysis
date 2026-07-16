@@ -12,7 +12,7 @@
 #    hospital sinks"
 #
 # Usage:
-#   ./taxonomic_classification.sh -i INPUT_DIR -o OUTPUT_DIR -d KRAKEN2_DB [-t THREADS] [-p PARALLEL_JOBS]
+#   ./taxonomic_classification.sh -i INPUT_DIR -o OUTPUT_DIR -d KRAKEN2_DB [-t THREADS] [-p PARALLEL_JOBS] [-c CONFIDENCE]
 #
 #   -i  Input directory containing paired-end FASTQ files
 #       (*_R1_001.fastq.gz / *_R2_001.fastq.gz)
@@ -22,17 +22,27 @@
 #   -t  Threads per Kraken2 process (default: 4)
 #   -p  Number of samples to process in parallel (default: 1; requires
 #       GNU parallel if >1)
+#   -c  Kraken2 confidence score threshold (--confidence), 0-1
+#       (default: Kraken2's own default, 0). A stricter (higher) value
+#       reduces low-confidence/ambiguous calls.
+#       NOTE: for 18S rRNA classification, a higher confidence threshold
+#       than the default is recommended, since eukaryotic reads are more
+#       prone to spurious low-confidence hits across kingdoms. Run this
+#       script separately per marker and pass a higher -c value for the
+#       18S database.
 #
 # Requirements: Kraken2 in PATH and an accessible Kraken2 database
 set -euo pipefail
 
 usage() {
-  echo "Usage: $0 -i INPUT_DIR -o OUTPUT_DIR -d KRAKEN2_DB [-t THREADS] [-p PARALLEL_JOBS]"
+  echo "Usage: $0 -i INPUT_DIR -o OUTPUT_DIR -d KRAKEN2_DB [-t THREADS] [-p PARALLEL_JOBS] [-c CONFIDENCE]"
   echo "  -i  Input directory with FASTQ files (*.fastq.gz) ending in _R1_001/_R2_001"
   echo "  -o  Output directory"
   echo "  -d  Kraken2 database directory (contains hash.k2d, opts.k2d, taxo.k2d, etc.)"
   echo "  -t  Threads per Kraken2 process (default: 4)"
   echo "  -p  Number of samples to process in parallel (default: 1; requires GNU parallel if >1)"
+  echo "  -c  Kraken2 --confidence threshold, 0-1 (default: Kraken2's default, 0)."
+  echo "      Recommended higher for 18S rRNA classification (see comments in this script)."
   exit 1
 }
 
@@ -41,14 +51,16 @@ OUTPUT_DIR=""
 DB_DIR=""
 THREADS=4
 PARALLEL_JOBS=1
+CONFIDENCE=""
 
-while getopts ":i:o:d:t:p:" opt; do
+while getopts ":i:o:d:t:p:c:" opt; do
   case "$opt" in
     i) INPUT_DIR="$OPTARG" ;;
     o) OUTPUT_DIR="$OPTARG" ;;
     d) DB_DIR="$OPTARG" ;;
     t) THREADS="$OPTARG" ;;
     p) PARALLEL_JOBS="$OPTARG" ;;
+    c) CONFIDENCE="$OPTARG" ;;
     *) usage ;;
   esac
 done
@@ -56,6 +68,14 @@ done
 [ -z "${INPUT_DIR}" ] && usage
 [ -z "${OUTPUT_DIR}" ] && usage
 [ -z "${DB_DIR}" ] && usage
+
+if [ -n "${CONFIDENCE}" ]; then
+  case "${CONFIDENCE}" in
+    0|0.0|1|1.0) ;;
+    0.[0-9]|0.[0-9][0-9]*) ;;
+    *) echo "Error: -c CONFIDENCE must be a number between 0 and 1 (got '${CONFIDENCE}')" >&2; exit 1 ;;
+  esac
+fi
 
 [ -d "${INPUT_DIR}" ] || { echo "Error: input directory not found: ${INPUT_DIR}" >&2; exit 1; }
 mkdir -p "${OUTPUT_DIR}"
@@ -83,6 +103,7 @@ run_one() {
   local OUTPUT_DIR="$4"
   local LOG_DIR="$5"
   local REPORT_DIR="$6"
+  local CONFIDENCE="$7"
 
   local base="$(basename "$R1" _R1_001.fastq.gz)"
   local R2="${INPUT_DIR%/}/${base}_R2_001.fastq.gz"
@@ -102,7 +123,11 @@ run_one() {
     echo "R2: $R2"
     echo "DB: $DB_DIR"
     echo "Threads: $THREADS"
+    [ -n "$CONFIDENCE" ] && echo "Confidence: $CONFIDENCE"
   } >> "$log_file"
+
+  local confidence_opt=()
+  [ -n "$CONFIDENCE" ] && confidence_opt=(--confidence "$CONFIDENCE")
 
   set +e
   kraken2 \
@@ -112,6 +137,7 @@ run_one() {
     --output "$out_txt" \
     --report "$out_report" \
     --use-names \
+    "${confidence_opt[@]}" \
     >> "$log_file" 2>&1
   status=$?
   set -e
@@ -133,10 +159,10 @@ export INPUT_DIR
 if [ "$PARALLEL_JOBS" -gt 1 ]; then
   command -v parallel >/dev/null 2>&1 || { echo "Error: PARALLEL_JOBS=${PARALLEL_JOBS} but GNU parallel is not in PATH" >&2; exit 1; }
   printf '%s\0' "${R1_FILES[@]}" | parallel -0 -j "${PARALLEL_JOBS}" --will-cite \
-    run_one {} "${THREADS}" "${DB_DIR}" "${OUTPUT_DIR}" "${LOG_DIR}" "${REPORT_DIR}"
+    run_one {} "${THREADS}" "${DB_DIR}" "${OUTPUT_DIR}" "${LOG_DIR}" "${REPORT_DIR}" "${CONFIDENCE}"
 else
   for R1 in "${R1_FILES[@]}"; do
-    run_one "$R1" "${THREADS}" "${DB_DIR}" "${OUTPUT_DIR}" "${LOG_DIR}" "${REPORT_DIR}"
+    run_one "$R1" "${THREADS}" "${DB_DIR}" "${OUTPUT_DIR}" "${LOG_DIR}" "${REPORT_DIR}" "${CONFIDENCE}"
   done
 fi
 
